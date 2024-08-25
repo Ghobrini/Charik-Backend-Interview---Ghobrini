@@ -1,0 +1,15 @@
+version: "3"
+
+
+services:
+  neo:
+    container_name: neo
+    build: .
+    env_file: credentials.env
+    command: bash -c "python manage.py runserver 0:8083"
+    restart: always
+    stdin_open: true
+    volumes:
+      - .:/app
+    ports:
+      - "0.0.0.0:8083:8083"

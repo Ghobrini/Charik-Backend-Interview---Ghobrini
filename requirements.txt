@@ -1,2 +1,4 @@
 Django
+hubspot-api-client
 djangorestframework
+requests

@@ -26,6 +26,11 @@ add the following variables in your credentials.env
 ```
 HUBSPOT_API_KEY=[Your HubSpot API will be in the email]
 ```
+#### scope
+  - `crm.objects.deals.read`
+  - `crm.objects.deals.write`
+  - `crm.objects.contacts.read`
+  - `crm.objects.contacts.write`
 
 ### Build and Start Docker Containers
 ```
@@ -231,4 +236,28 @@ The application will be available at http://localhost:8083.
             "updated_at": "2024-08-25T08:46:37.666000Z",
             "deals": []
         }]
-}```
+}
+```
+
+if pagination is not applied 
+```json
+ [
+        {
+            "associations": null,
+            "created_at": "2024-08-25T08:46:21.428000Z",
+            "archived": false,
+            "archived_at": null,
+            "properties_with_history": null,
+            "id": "31856923120",
+            "properties": {
+                "createdate": "2024-08-25T08:46:21.428Z",
+                "email": "bh@hubspot.com",
+                "firstname": "Brian",
+                "hs_object_id": "31856923120",
+                "lastmodifieddate": "2024-08-25T08:46:37.666Z",
+                "lastname": "Halligan (Sample Contact)"
+            },
+            "updated_at": "2024-08-25T08:46:37.666000Z",
+            "deals": []
+        }]
+```

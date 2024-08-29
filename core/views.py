@@ -1,5 +1,5 @@
 import os
-
+import requests 
 import hubspot
 from hubspot.crm.deals import (
                         SimplePublicObjectInputForCreate as DealObjectCreate,
@@ -15,10 +15,14 @@ from rest_framework import status
 from core.serializers import ContactSerialiser, DealSerialiser, AssociateSerialiser
 
 
+
 # Initialize HubSpot client with access token
 client = hubspot.Client.create(access_token=os.environ.get('HUBSPOT_ACCESS_TOKEN'))
 
-
+headers = {
+                'Authorization': f"Bearer {os.environ.get('HUBSPOT_ACCESS_TOKEN')}",
+                'Content-Type': 'application/json'
+            }
 
 class ContactView(APIView):
     """
@@ -30,11 +34,10 @@ class ContactView(APIView):
         Handle POST request to create a new contact.
 
         1. Deserialize the incoming request data using ContactSerialiser.
-        2. If the data is valid, create a ContactObjectCreate instance with the validated data.
-        3. Attempt to create the contact using HubSpot's API.
-        4. Return the API response as JSON with HTTP status 200 if successful.
-        5. If a contact already exists, catch the exception and return an appropriate error message with HTTP status 400.
-        6. If the data is invalid, return the validation errors with HTTP status 400.
+        2. If the data is valid, send a POST request to HubSpot's API to create a contact.
+        3. Return the API response as JSON with HTTP status 200 if the contact creation is successful.
+        4. If the HubSpot API returns an error, return a generic error message with HTTP status 400.
+        5. If the data is invalid, return the validation errors with HTTP status 400.
         """
 
         # Deserialize the request data using the ContactSerialiser
@@ -42,23 +45,22 @@ class ContactView(APIView):
         
         # Check if the serialized data is valid
         if serializer.is_valid():
-            # Create a ContactObjectCreate instance with the validated data
-            contact_object = ContactObjectCreate(properties=serializer.data)
+            # Define the URL and headers
+            url = "https://api.hubapi.com/crm/v3/objects/contacts"
+            data = {"properties": serializer.data}
             
-            try:
-                # Attempt to create the contact using HubSpot's API
-                api_response = client.crm.contacts.basic_api.create(
-                    simple_public_object_input_for_create=contact_object
-                )
-                
-                # If successful, return the API response as a JSON object with HTTP status 200
-                return Response(api_response.to_dict(), status=status.HTTP_200_OK)
-            
-            except ContactException as e:
-                # If the contact already exists, return a specific error message
-                return Response({"Exception": "Contact already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            # Send a POST request to HubSpot's API
+            response = requests.post(url, headers=headers, json=data)
+
+            # Check if the contact was successfully created
+            if response.status_code == 201:
+                # Return the API response as JSON with HTTP status 200
+                return Response(response.json(), status=status.HTTP_200_OK)
+            else:
+                # Return an error message with HTTP status 400 if an issue occurs
+                return Response({"Error": response.text}, status=status.HTTP_400_BAD_REQUEST)
         
-        # If the data is invalid, return the validation errors with HTTP status 400
+        # Return validation errors with HTTP status 400 if the data is invalid
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DealView(APIView):
@@ -71,11 +73,10 @@ class DealView(APIView):
         Handle POST request to create a new deal.
 
         1. Deserialize the incoming request data using DealSerialiser.
-        2. If the data is valid, create a DealObjectCreate instance with the validated data.
-        3. Attempt to create the deal using HubSpot's API.
-        4. Return the API response as JSON with HTTP status 200 if successful.
-        5. If an exception occurs, return a generic error message with HTTP status 400.
-        6. If the data is invalid, return the validation errors with HTTP status 400.
+        2. If the data is valid, send a POST request to HubSpot's API to create a deal.
+        3. Return the API response as JSON with HTTP status 201 if the deal creation is successful.
+        4. If the HubSpot API returns an error, return a generic error message with HTTP status 400.
+        5. If the data is invalid, return the validation errors with HTTP status 400.
         """
 
         # Deserialize the request data using the DealSerialiser
@@ -83,23 +84,22 @@ class DealView(APIView):
         
         # Check if the serialized data is valid
         if serializer.is_valid():
-            # Create a DealObjectCreate instance with the validated data
-            deal_object = DealObjectCreate(properties=serializer.data)
+            # Define the URL and headers
+            url = "https://api.hubapi.com/crm/v3/objects/deals"
+            data = {"properties": serializer.data}
             
-            try:
-                # Attempt to create the deal using HubSpot's API
-                api_response = client.crm.deals.basic_api.create(
-                    simple_public_object_input_for_create=deal_object
-                )
-                
-                # If successful, return the API response as a JSON object with HTTP status 200
-                return Response(api_response.to_dict(), status=status.HTTP_200_OK)
-            
-            except DealException as e:
-                # If an exception occurs during the API call, return a generic error message
-                return Response({"Exception": "Exception when creating Deal"}, status=status.HTTP_400_BAD_REQUEST)
+            # Send a POST request to HubSpot's API
+            response = requests.post(url, headers=headers, json=data)
+
+            # Check if the deal was successfully created
+            if response.status_code == 201:
+                # Return the API response as JSON with HTTP status 200
+                return Response(response.json(), status=status.HTTP_200_OK)
+            else:
+                # Return an error message with HTTP status 400 if an issue occurs
+                return Response({"Error": response.text}, status=status.HTTP_400_BAD_REQUEST)
         
-        # If the data is invalid, return the validation errors with HTTP status 400
+        # Return validation errors with HTTP status 400 if the data is invalid
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -174,7 +174,7 @@ class AssociateView(APIView):
             )
             deals = api_response.to_dict()["results"]
         except DealException as e:
-            return Response({"Exception": "Exception when getting Associations"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(e.__dict__['body'], status=status.HTTP_400_BAD_REQUEST)
 
         # Associate deals with each contact
         for contact in contacts:
@@ -215,6 +215,8 @@ class AssociateView(APIView):
         
         # Check if the serialized data is valid
         if serializer.is_valid():
+
+            
             # Create a BatchInputPublicAssociation instance with contact and deal IDs
             batch_input_public_association = BatchInputPublicAssociation(
                 inputs=[{
@@ -230,12 +232,14 @@ class AssociateView(APIView):
                     from_object_type="contact", to_object_type="deal",
                     batch_input_public_association=batch_input_public_association
                 )
+                if  'num_errors' in api_response.to_dict():
+                    return Response(api_response.to_dict(), status=status.HTTP_400_BAD_REQUEST)
+                
                 # Return the API response with HTTP status 200 if successful
                 return Response(api_response.to_dict(), status=status.HTTP_200_OK)
-            
             except ApiException as e:
                 # Return an error message with HTTP status 400 if an exception occurs
-                return Response({"Exception": "Exception when creating Association"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(e.__dict__['body'], status=status.HTTP_400_BAD_REQUEST)
         
         # Return validation errors with HTTP status 400 if the data is invalid
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

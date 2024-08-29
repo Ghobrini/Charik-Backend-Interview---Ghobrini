@@ -56,7 +56,7 @@ class ContactView(APIView):
             
             except ContactException as e:
                 # If the contact already exists, return a specific error message
-                return Response({"Exception": "Contact already exists"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(e.__dict__['body'], status=status.HTTP_400_BAD_REQUEST)
         
         # If the data is invalid, return the validation errors with HTTP status 400
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -97,7 +97,7 @@ class DealView(APIView):
             
             except DealException as e:
                 # If an exception occurs during the API call, return a generic error message
-                return Response({"Exception": "Exception when creating Deal"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(e.__dict__['body'], status=status.HTTP_400_BAD_REQUEST)
         
         # If the data is invalid, return the validation errors with HTTP status 400
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -174,7 +174,7 @@ class AssociateView(APIView):
             )
             deals = api_response.to_dict()["results"]
         except DealException as e:
-            return Response({"Exception": "Exception when getting Associations"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(e.__dict__['body'], status=status.HTTP_400_BAD_REQUEST)
 
         # Associate deals with each contact
         for contact in contacts:
@@ -235,7 +235,7 @@ class AssociateView(APIView):
             
             except ApiException as e:
                 # Return an error message with HTTP status 400 if an exception occurs
-                return Response({"Exception": "Exception when creating Association"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(e.__dict__['body'], status=status.HTTP_400_BAD_REQUEST)
         
         # Return validation errors with HTTP status 400 if the data is invalid
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
